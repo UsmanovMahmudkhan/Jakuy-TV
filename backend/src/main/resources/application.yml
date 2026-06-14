@@ -9,13 +9,13 @@ jakuy:
     uzbek-url: https://iptv-org.github.io/iptv/countries/uz.m3u
     fallback-url: https://iptv-org.github.io/iptv/index.m3u
   cors:
-    allowed-origins: http://localhost:3000,http://localhost:3001
+    allowed-origins: ${JAKUY_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
   streamcheck:
     timeout-ms: 5000
     max-per-request: 50
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 ---
 spring:
@@ -43,7 +43,7 @@ spring:
     activate:
       on-profile: postgres
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jakuy_tv}
+    url: jdbc:postgresql://${SPRING_DATASOURCE_HOST:localhost}:${SPRING_DATASOURCE_PORT:5432}/${SPRING_DATASOURCE_DATABASE:jakuy_tv}
     username: ${SPRING_DATASOURCE_USERNAME:jakuy}
     password: ${SPRING_DATASOURCE_PASSWORD:jakuy_password}
   jpa:
