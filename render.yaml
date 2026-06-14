@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: jakuy-tv-api-usmanov
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/channels?page=0&size=1
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: postgres
+      - key: JAKUY_CORS_ALLOWED_ORIGINS
+        value: https://jakuy-tv.netlify.app
+      - key: SPRING_DATASOURCE_HOST
+        fromDatabase:
+          name: jakuy-tv-postgres
+          property: host
+      - key: SPRING_DATASOURCE_PORT
+        fromDatabase:
+          name: jakuy-tv-postgres
+          property: port
+      - key: SPRING_DATASOURCE_DATABASE
+        fromDatabase:
+          name: jakuy-tv-postgres
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: jakuy-tv-postgres
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: jakuy-tv-postgres
+          property: password
+
+databases:
+  - name: jakuy-tv-postgres
+    databaseName: jakuy_tv
+    user: jakuy
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: []
