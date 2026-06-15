@@ -39,16 +39,14 @@ const MAX_CHANNEL_PAGES = 100;
 
 export const fetchAllChannels = async (): Promise<BackendChannel[]> => {
   const size = 200;
-  let page = 0;
   const all: BackendChannel[] = [];
 
-  while (true) {
+  for (let page = 0; page < MAX_CHANNEL_PAGES; page += 1) {
     const data = await request<PageResponse<BackendChannel>>(`/api/channels?page=${page}&size=${size}`);
     all.push(...data.content);
     if (data.last || data.content.length === 0) {
       break;
     }
-    page += 1;
   }
 
   return all;
