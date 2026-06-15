@@ -1,35 +1,16 @@
 'use client';
 
-import { Channel, Playlist } from '@/types';
+import { Playlist } from '@/types';
+import { BackendChannel, PageResponse, buildPlaylist } from '@/lib/channel-mapper';
 
-export interface BackendChannel {
-  id: number;
-  tvgId?: string;
-  name: string;
-  country?: string;
-  countryCode?: string;
-  language?: string;
-  category?: string;
-  logoUrl?: string;
-  streamUrl: string;
-  online: boolean;
-  lastCheckedAt?: string;
-}
+export type { BackendChannel } from '@/lib/channel-mapper';
+export { buildPlaylist, mapBackendChannel } from '@/lib/channel-mapper';
 
 export interface BackendFavorite {
   id: number;
   channelId: number;
   createdAt: string;
   channel?: BackendChannel;
-}
-
-interface PageResponse<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  last: boolean;
 }
 
 interface StreamResponse {
@@ -54,24 +35,7 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-export const mapBackendChannel = (channel: BackendChannel): Channel => ({
-  id: String(channel.id),
-  tvgId: channel.tvgId,
-  tvgName: channel.name,
-  groupTitle: channel.category || 'Uncategorized',
-  logo: channel.logoUrl,
-  name: channel.name,
-  url: channel.streamUrl,
-  online: channel.online,
-});
-
-export const buildPlaylist = (channels: BackendChannel[]): Playlist => {
-  const mapped = channels.map(mapBackendChannel);
-  const groups = Array.from(
-    new Set(mapped.map(channel => channel.groupTitle).filter((group): group is string => Boolean(group)))
-  ).sort();
-  return { channels: mapped, groups };
-};
+const MAX_CHANNEL_PAGES = 100;
 
 export const fetchAllChannels = async (): Promise<BackendChannel[]> => {
   const size = 200;
