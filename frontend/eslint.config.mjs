@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated/vendored output that should never be linted:
+    ".netlify/**",
+    "node_modules/**",
   ]),
 ]);
 
