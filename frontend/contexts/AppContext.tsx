@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { usePlayerStore } from '@/store/useStore';
-import { ContinueWatchingChannels, Tab, PageView } from '@/types';
+import { ContinueWatchingChannels, Tab, PageView, Playlist } from '@/types';
 import { addFavorite, fetchFavorites, fetchUzbekPlaylist, removeFavorite } from '@/lib/api';
 
 interface AppContextType {
@@ -40,12 +40,17 @@ export const useAppContext = () => {
 
 interface AppProviderProps {
   children: ReactNode;
+  // Channels prefetched on the server (ISR-cached) so the first paint never
+  // waits on a live backend round-trip. Empty when the backend was unreachable
+  // during render — the client fetch below then takes over as a fallback.
+  initialPlaylist?: Playlist;
 }
 
-export const AppProvider = ({ children }: AppProviderProps) => {
+export const AppProvider = ({ children, initialPlaylist }: AppProviderProps) => {
   const { playlist, favorites, activeChannel, setPlaylist, toggleFavorite, isHydrated } = usePlayerStore();
 
   const isLoadingRef = useRef(false);
+  const seededRef = useRef(false);
   const favoritesSeededRef = useRef(false);
   const syncedFavoritesRef = useRef<Set<string> | null>(null);
 
@@ -55,7 +60,26 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load Uzbek channels from the Jakuy TV backend. Re-runs after logout (playlist cleared).
+  // Seed the store from the server-prefetched playlist on mount. This runs
+  // before the client ever calls the backend, so the browse screen is usable as
+  // soon as the JS hydrates — independent of backend warmth. (playlist is not
+  // persisted, so store rehydration never clobbers this.)
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    if (
+      initialPlaylist &&
+      initialPlaylist.channels.length > 0 &&
+      usePlayerStore.getState().playlist.length === 0
+    ) {
+      setPlaylist(initialPlaylist);
+      setCurrentView(PageView.BROWSE);
+      setIsLoadingPlaylist(false);
+    }
+  }, [initialPlaylist, setPlaylist]);
+
+  // Load Uzbek channels from the Jakuy TV backend. Acts as a fallback when the
+  // server prefetch came back empty, and re-runs after logout (playlist cleared).
   useEffect(() => {
     if (!isHydrated || playlist.length > 0 || isLoadingRef.current) {
       if (playlist.length > 0 && currentView !== PageView.BROWSE) {

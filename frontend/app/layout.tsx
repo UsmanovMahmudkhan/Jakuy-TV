@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MotionConfig } from "framer-motion";
 import "./globals.css";
-import { AppProvider } from "@/contexts/AppContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,9 +25,7 @@ const RootLayout = ({
   return (
     <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <MotionConfig reducedMotion="user">
-          <AppProvider>{children}</AppProvider>
-        </MotionConfig>
+        {children}
       </body>
     </html>
   );
