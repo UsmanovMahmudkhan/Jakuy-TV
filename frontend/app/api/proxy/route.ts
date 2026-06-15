@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertPublicHttpUrl, UrlGuardError } from '@/lib/url-guard';
 
 export const dynamic = 'force-dynamic';
+
+const FETCH_TIMEOUT_MS = 15000;
 
 export async function GET(request: NextRequest) {
   const urlParams = request.nextUrl.searchParams;
@@ -11,9 +14,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    new URL(targetUrl);
-  } catch {
-    return new NextResponse('Invalid URL', { status: 400 });
+    await assertPublicHttpUrl(targetUrl);
+  } catch (error) {
+    const message = error instanceof UrlGuardError ? error.message : 'Invalid URL';
+    return new NextResponse(message, { status: 400 });
   }
 
   console.log(`[Proxy] Fetching: ${targetUrl}`);
@@ -24,6 +28,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
       },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
