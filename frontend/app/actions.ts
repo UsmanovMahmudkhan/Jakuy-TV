@@ -1,19 +1,24 @@
 "use server";
 
-export async function fetchPlaylist(url: string) {
+import { assertPublicHttpUrl, UrlGuardError } from "@/lib/url-guard";
+
+const FETCH_TIMEOUT_MS = 20000;
+
+type FetchResult =
+  | { success: true; data: string }
+  | { success: false; error: string };
+
+async function fetchText(url: string, label: string): Promise<FetchResult> {
   try {
-    const parsedUrl = new URL(url);
+    const safeUrl = await assertPublicHttpUrl(url);
 
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      throw new Error("Invalid protocol: Only HTTP and HTTPS are allowed");
-    }
-
-    const response = await fetch(parsedUrl.toString(), {
-      method: 'GET',
+    const response = await fetch(safeUrl.toString(), {
+      method: "GET",
       headers: {
-        'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
+        "User-Agent": "VLC/3.0.20 LibVLC/3.0.20",
       },
-      redirect: 'follow',
+      redirect: "follow",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -23,45 +28,27 @@ export async function fetchPlaylist(url: string) {
     const data = await response.text();
     return { success: true, data };
   } catch (error) {
+    if (error instanceof UrlGuardError) {
+      return { success: false, error: error.message };
+    }
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      console.error(`${label} fetch timed out:`, url);
+      return { success: false, error: `${label} fetch failed: request timed out` };
+    }
     if (error instanceof Error) {
-      console.error("Fetch error:", error);
-      return { success: false, error: `Fetch failed: ${error.message}` };
+      console.error(`${label} fetch error:`, error.message);
+      return { success: false, error: `${label} fetch failed: ${error.message}` };
     }
 
-    console.error("Fetch error (unknown):", error);
-    return { success: false, error: "Fetch failed: Unknown error" };
+    console.error(`${label} fetch error (unknown):`, error);
+    return { success: false, error: `${label} fetch failed: Unknown error` };
   }
 }
 
+export async function fetchPlaylist(url: string) {
+  return fetchText(url, "Playlist");
+}
+
 export async function fetchEpg(url: string) {
-  try {
-    const parsedUrl = new URL(url);
-
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      throw new Error("Invalid protocol: Only HTTP and HTTPS are allowed");
-    }
-
-    const response = await fetch(parsedUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
-      },
-      redirect: 'follow',
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.text();
-    return { success: true, data };
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error("EPG fetch error:", error);
-      return { success: false, error: `EPG fetch failed: ${error.message}` };
-    }
-
-    console.error("EPG fetch error (unknown):", error);
-    return { success: false, error: "EPG fetch failed: Unknown error" };
-  }
+  return fetchText(url, "EPG");
 }
