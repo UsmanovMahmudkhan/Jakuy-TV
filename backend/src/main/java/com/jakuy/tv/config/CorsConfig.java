@@ -5,13 +5,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
+
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
     private final String[] allowedOrigins;
 
     public CorsConfig(@Value("${jakuy.cors.allowed-origins}") String allowedOrigins) {
-        this.allowedOrigins = allowedOrigins.split(",");
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
     }
 
     @Override
