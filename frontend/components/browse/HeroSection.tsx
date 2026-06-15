@@ -1,10 +1,14 @@
 'use client';
 
 import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { usePlayerStore } from "@/store/useStore";
-import VideoPlayer from "@/components/player/VideoPlayer";
 import { Play } from "lucide-react";
+
+// hls.js (~140 KB) loads only when the hero actually plays a preview, keeping it
+// out of the first-load bundle.
+const VideoPlayer = dynamic(() => import("@/components/player/VideoPlayer"), { ssr: false });
 import { motion } from "framer-motion";
 import { getChannelDescription } from "@/lib/epg";
 import { Skeleton } from "@/components/ui/skeleton";
