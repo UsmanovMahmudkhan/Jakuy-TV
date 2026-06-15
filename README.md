@@ -107,6 +107,46 @@ npm run dev                  # http://localhost:3000
 The frontend loads Uzbek channels from the backend automatically on startup. If no channels
 appear, run the import command above.
 
+## Tests
+
+Backend (JUnit + Mockito):
+
+```bash
+cd backend
+mvn test
+```
+
+Frontend (Vitest):
+
+```bash
+cd frontend
+npm test          # run once
+npm run test:watch
+```
+
+Frontend tests cover the M3U parser, backend-channel mapping, and the server-side
+URL guard (SSRF protection). Backend tests cover the M3U parser and the channel
+service (page-size clamping and Uzbek-only enforcement).
+
+## Troubleshooting
+
+| Symptom | Cause / Fix |
+|---------|-------------|
+| Frontend shows "Unable to reach the Jakuy TV backend" | Backend is not running or `NEXT_PUBLIC_API_URL` is wrong. Start the backend and confirm `http://localhost:8080/api/channels` responds. |
+| "No Uzbek channels available yet" | Database is empty. Run `curl -X POST http://localhost:8080/api/import/uzbek-channels`. |
+| Backend import returns 502 | iptv-org playlist and fallback are both unreachable (no internet or upstream down). Retry later. |
+| `Port 8080 already in use` | Another process holds the port. Set `PORT=8081` for the backend, or free the port. |
+| `Port 3000 already in use` | Run the frontend on another port: `npm run dev -- -p 3001` (and add that origin to `jakuy.cors.allowed-origins`). |
+| CORS errors in the browser | The frontend origin is not in `jakuy.cors.allowed-origins` / `JAKUY_CORS_ALLOWED_ORIGINS`. Add it (comma-separated). |
+| A stream/playlist URL is rejected with "Target host is not allowed" | The URL resolves to a private/loopback/metadata address and is blocked by the SSRF guard. Only public HTTP(S) hosts are allowed. |
+| Postgres connection fails on startup | Verify `SPRING_DATASOURCE_*` values and that Postgres is reachable. The default `dev` profile uses in-memory H2 and needs no database. |
+
+## Requirements
+
+- Java 21+ (the backend targets Java 21; JDK 23 also works)
+- Maven 3.9+
+- Node.js 20.19+ or 22.13+ (for the frontend and Vitest)
+
 ## Environment variables
 
 ### Frontend (`frontend/.env.local`)
