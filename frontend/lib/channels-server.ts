@@ -11,7 +11,7 @@ const PAGE_SIZE = 200;
 const MAX_PAGES = 100;
 // Keep the server render fast even when the backend is cold: bail out instead of
 // hanging on a spun-down instance, and let the client hydrate/fetch as a fallback.
-const FETCH_TIMEOUT_MS = 6000;
+const FETCH_TIMEOUT_MS = 10000;
 
 /**
  * Fetches the full Uzbek channel list on the server with ISR caching.

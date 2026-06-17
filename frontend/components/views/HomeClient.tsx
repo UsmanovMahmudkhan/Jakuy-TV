@@ -7,7 +7,7 @@ import LoadingView from "@/components/views/LoadingView";
 import BrowseView from "@/components/views/BrowseView";
 
 const AppShell = () => {
-  const { currentView, loadError } = useAppContext();
+  const { currentView, loadError, isWakingUp } = useAppContext();
 
   if (loadError && currentView !== PageView.BROWSE) {
     return (
@@ -28,7 +28,7 @@ const AppShell = () => {
 
   return (
     <>
-      {currentView === PageView.LOADING && <LoadingView />}
+      {currentView === PageView.LOADING && <LoadingView isWakingUp={isWakingUp} />}
       {currentView === PageView.BROWSE && <BrowseView />}
     </>
   );
