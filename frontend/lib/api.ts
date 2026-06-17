@@ -21,8 +21,56 @@ interface StreamResponse {
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
 
+// The backend runs on a free tier that spins down when idle, so the first
+// request after a while can hang or return a transient gateway error while the
+// instance cold-starts. Retry through those instead of failing immediately.
+const ATTEMPT_TIMEOUT_MS = 15_000;
+const MAX_TOTAL_RETRY_MS = 90_000;
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * fetch() wrapper that tolerates a cold-starting backend: each attempt has its
+ * own timeout, and network errors / gateway statuses (502/503/504) are retried
+ * with exponential backoff until ~90s elapse. Other 4xx/5xx are returned to the
+ * caller as-is (not retried) so genuine errors surface quickly.
+ */
+export const fetchWithRetry = async (url: string, init?: RequestInit): Promise<Response> => {
+  const deadline = Date.now() + MAX_TOTAL_RETRY_MS;
+  let attempt = 0;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+      });
+      if (!RETRYABLE_STATUSES.has(response.status)) {
+        return response;
+      }
+      lastError = new Error(`Request failed (${response.status}): ${url}`);
+    } catch (error) {
+      // Network failure or per-attempt timeout (AbortError) — both retryable.
+      lastError = error;
+    }
+
+    const backoff = Math.min(1_000 * 2 ** attempt, 8_000);
+    attempt += 1;
+    if (Date.now() + backoff >= deadline) {
+      break;
+    }
+    await sleep(backoff);
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Request failed after retries: ${url}`);
+};
+
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetchWithRetry(`${API_URL}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
   });
