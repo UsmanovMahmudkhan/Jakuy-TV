@@ -26,6 +26,9 @@ interface AppContextType {
   isLoadingPlaylist: boolean;
   setIsLoadingPlaylist: (loading: boolean) => void;
   loadError: string | null;
+  // True while a slow initial load is in flight (e.g. the backend is cold-starting),
+  // so the UI can explain the wait instead of showing a bare spinner.
+  isWakingUp: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,6 +62,7 @@ export const AppProvider = ({ children, initialPlaylist }: AppProviderProps) => 
   const [previousTab, setPreviousTab] = useState<Tab>(Tab.FOR_YOU);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isWakingUp, setIsWakingUp] = useState(false);
 
   // Seed the store from the server-prefetched playlist on mount. This runs
   // before the client ever calls the backend, so the browse screen is usable as
@@ -93,6 +97,10 @@ export const AppProvider = ({ children, initialPlaylist }: AppProviderProps) => 
     setIsLoadingPlaylist(true);
     setLoadError(null);
 
+    // If the fetch is still running after a few seconds, the backend is almost
+    // certainly cold-starting — surface a friendlier "waking up" message.
+    const wakingTimer = setTimeout(() => setIsWakingUp(true), 4_000);
+
     const load = async () => {
       try {
         const parsed = await fetchUzbekPlaylist();
@@ -106,12 +114,16 @@ export const AppProvider = ({ children, initialPlaylist }: AppProviderProps) => 
         console.error('Failed to load channels from backend:', err);
         setLoadError('Unable to reach the Jakuy TV backend. Make sure it is running.');
       } finally {
+        clearTimeout(wakingTimer);
+        setIsWakingUp(false);
         setIsLoadingPlaylist(false);
         isLoadingRef.current = false;
       }
     };
 
     load();
+
+    return () => clearTimeout(wakingTimer);
   }, [isHydrated, playlist.length, setPlaylist, currentView]);
 
   // Seed local favorites from the backend once channels are loaded.
@@ -208,6 +220,7 @@ export const AppProvider = ({ children, initialPlaylist }: AppProviderProps) => 
     isLoadingPlaylist,
     setIsLoadingPlaylist,
     loadError,
+    isWakingUp,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
